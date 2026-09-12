@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7v7 Roster Manager</title>
+<style>
+  :root {
+    --surface-page: #f4f3ee;
+    --surface-1: #f1efe8;
+    --surface-2: #ffffff;
+    --text-primary: #1a1a18;
+    --text-secondary: #5f5e5a;
+    --text-muted: #888780;
+    --text-danger: #a32d2d;
+    --text-accent: #185fa5;
+    --text-success: #27500a;
+    --border: #e2e0d8;
+    --border-strong: #c7c4b8;
+    --border-accent: #378add;
+    --bg-accent: #e6f1fb;
+    --bg-success: #eaf3de;
+    --radius: 8px;
+    --field-green: #eaf3de;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .app {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 16px;
+    text-align: center;
+  }
+  select, button, input {
+    font-family: inherit;
+    font-size: 14px;
+    height: 36px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    padding: 0 10px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:hover {
+    background: var(--surface-1);
+  }
+  button:active {
+    transform: scale(0.98);
+  }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .row label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+  .row select { flex: 1; }
+  .btn-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .btn-row button { flex: 1; }
+  #tab-first, #tab-second { flex: 1; }
+  #field {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: var(--field-green);
+    border-radius: 12px;
+    border: 0.5px solid var(--border);
+    overflow: hidden;
+  }
+  #field::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 0.5px;
+    background: var(--border);
+  }
+  #field::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 60px; height: 60px;
+    margin: -30px 0 0 -30px;
+    border: 0.5px solid var(--border);
+    border-radius: 50%;
+  }
+  .slot { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .circle {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500; cursor: pointer;
+  }
+  .tag {
+    display: flex; align-items: center; gap: 3px;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 4px 1px 6px;
+    max-width: 110px;
+  }
+  .tag span {
+    font-size: 11px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tag .rm { font-size: 11px; color: var(--text-muted); cursor: pointer; padding-left: 2px; }
+  .section-title { font-size: 13px; color: var(--text-secondary); margin: 16px 0 6px; }
+  #bench { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 13px; padding: 5px 6px 5px 10px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .chip.selected { border-color: var(--border-accent); background: var(--bg-accent); color: var(--text-accent); }
+  .chip .rm { font-size: 13px; color: var(--text-muted); cursor: pointer; }
+  .gk-badge {
+    font-size: 10px; padding: 2px 5px; border-radius: 6px;
+    border: 0.5px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .gk-badge.active {
+    border-color: var(--border-strong);
+    background: var(--bg-success);
+    color: var(--text-success);
+  }
+  #subs-list { display: flex; flex-direction: column; gap: 6px; }
+  .sub-row {
+    font-size: 13px; padding: 6px 10px; border-radius: var(--radius);
+    border: 0.5px solid var(--border); background: var(--surface-2);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .muted-note { font-size: 12px; color: var(--text-muted); margin: 0; }
+  #hint { font-size: 12px; color: var(--text-muted); margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>7v7 roster manager</h1>
+
+  <div class="row">
+    <label>Formation</label>
+    <select id="formation">
+      <option value="1-3-3">1-3-3</option>
+      <option value="1-2-3-1">1-2-3-1</option>
+      <option value="1-3-2-1">1-3-2-1</option>
+      <option value="1-2-2-2">1-2-2-2</option>
+    </select>
+  </div>
+
+  <div class="btn-row">
+    <button id="tab-first">First half</button>
+    <button id="tab-second">Second half</button>
+  </div>
+
+  <div class="btn-row">
+    <button id="reroll-btn">&#8635; Re-roll</button>
+    <button id="reset-btn">&#128465; Reset</button>
+  </div>
+
+  <div id="field"></div>
+
+  <p class="section-title">Bench</p>
+  <div id="bench"></div>
+
+  <p class="section-title">Suggested subs at halftime of this half</p>
+  <div id="subs-list"></div>
+
+  <p id="hint"></p>
+</div>
+
+<script>
+const DEFAULT_NAMES = ["Edward","Jackson","Ben","Henry","Yugen","Mateo","Matthew","Crosby","Reddy","Teddy","Charley"];
+
+function defaultRoster(){
+  return DEFAULT_NAMES.map(n => ({ name: n, gkOk: true, quarters: 0 }));
+}
+
+const FORMATIONS = {
+  "1-3-3": [
+    {label:"GK", x:50, y:92, gk:true},
+    {label:"CB", x:25, y:70},{label:"CB", x:50, y:74},{label:"CB", x:75, y:70},
+    {label:"LW", x:20, y:24},{label:"ST", x:50, y:16},{label:"RW", x:80, y:24}
+  ],
+  "1-2-3-1": [
+    {label:"GK", x:50, y:92, gk:true},
+    {label:"CB", x:33, y:72},{label:"CB", x:67, y:72},
+    {label:"LM", x:18, y:48},{label:"CM", x:50, y:52},{label:"RM", x:82, y:48},
+    {label:"ST", x:50, y:16}
+  ],
+  "1-3-2-1": [
+    {label:"GK", x:50, y:92, gk:true},
+    {label:"CB", x:25, y:70},{label:"CB", x:50, y:74},{label:"CB", x:75, y:70},
+    {label:"CM", x:35, y:44},{label:"CM", x:65, y:44},
+    {label:"ST", x:50, y:16}
+  ],
+  "1-2-2-2": [
+    {label:"GK", x:50, y:92, gk:true},
+    {label:"CB", x:33, y:72},{label:"CB", x:67, y:72},
+    {label:"CM", x:33, y:46},{label:"CM", x:67, y:46},
+    {label:"ST", x:33, y:16},{label:"ST", x:67, y:16}
+  ]
+};
+
+let players = defaultRoster();
+let firstHalf = { starters: [], bench: [], subs: [] };
+let secondHalf = { starters: [], bench: [], subs: [] };
+let currentTab = 'first';
+let selectedBench = null;
+
+const fieldEl = document.getElementById('field');
+const benchEl = document.getElementById('bench');
+const subsListEl = document.getElementById('subs-list');
+const formationSel = document.getElementById('formation');
+const hintEl = document.getElementById('hint');
+const tabFirstBtn = document.getElementById('tab-first');
+const tabSecondBtn = document.getElementById('tab-second');
+
+function shuffle(arr){
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function gkIndexFor(layout){
+  return layout.findIndex(p => p.gk);
+}
+
+function generateFirstHalfLineup(){
+  const layout = FORMATIONS[formationSel.value];
+  const starters = new Array(layout.length).fill(null);
+  let bench = [];
+  const order = shuffle(players.slice());
+  const gkIndex = gkIndexFor(layout);
+  const gkCandidates = order.filter(p => p.gkOk);
+  if (gkCandidates.length > 0) {
+    const chosen = gkCandidates[Math.floor(Math.random() * gkCandidates.length)];
+    starters[gkIndex] = chosen;
+    order.splice(order.indexOf(chosen), 1);
+  }
+  let openSlots = [];
+  layout.forEach((p, i) => { if (starters[i] === null) openSlots.push(i); });
+  shuffle(openSlots);
+  order.forEach(player => {
+    if (openSlots.length > 0) starters[openSlots.pop()] = player;
+    else bench.push(player);
+  });
+  firstHalf.starters = starters;
+  firstHalf.bench = bench;
+}
+
+function generateSecondHalfLineup(){
+  const layout = FORMATIONS[formationSel.value];
+  const gkIndex = gkIndexFor(layout);
+  const oldGk = firstHalf.starters[gkIndex];
+  let oldOutfield = firstHalf.starters.filter((p, i) => p && i !== gkIndex);
+  let benchPool = shuffle(firstHalf.bench.slice());
+
+  const starters = new Array(layout.length).fill(null);
+  let openSlots = layout.map((_, i) => i);
+
+  let newGk = null;
+  const gkCandidates = shuffle(oldOutfield.filter(p => p.gkOk));
+  if (gkCandidates.length > 0) {
+    newGk = gkCandidates[0];
+    oldOutfield = oldOutfield.filter(p => p !== newGk);
+  }
+  if (newGk) {
+    starters[gkIndex] = newGk;
+    openSlots = openSlots.filter(i => i !== gkIndex);
+  }
+
+  if (oldGk) {
+    const nonGkSlots = shuffle(openSlots.filter(i => i !== gkIndex));
+    const slot = nonGkSlots.pop();
+    if (slot !== undefined) {
+      starters[slot] = oldGk;
+      openSlots = openSlots.filter(i => i !== slot);
+    }
+  }
+
+  while (openSlots.length > 0 && benchPool.length > 0) {
+    starters[openSlots.pop()] = benchPool.pop();
+  }
+  let leftoverOutfield = shuffle(oldOutfield.slice());
+  while (openSlots.length > 0 && leftoverOutfield.length > 0) {
+    starters[openSlots.pop()] = leftoverOutfield.pop();
+  }
+
+  const used = new Set(starters.filter(Boolean));
+  const bench = players.filter(p => !used.has(p));
+
+  secondHalf.starters = starters;
+  secondHalf.bench = bench;
+}
+
+function addQuarter(arr){
+  arr.filter(Boolean).forEach(p => { p.quarters += 1; });
+}
+
+function computeSubsList(half, gkIndex){
+  const outCandidates = half.starters
+    .map((p, i) => ({ p, i }))
+    .filter(x => x.p && x.i !== gkIndex)
+    .sort((a, b) => b.p.quarters - a.p.quarters);
+  const inCandidates = half.bench.slice().sort((a, b) => a.quarters - b.quarters);
+  const maxSwaps = Math.min(outCandidates.length, inCandidates.length);
+  const list = [];
+  for (let k = 0; k < maxSwaps; k++) {
+    if (inCandidates[k].quarters < outCandidates[k].p.quarters) {
+      list.push({ out: outCandidates[k].p, in: inCandidates[k] });
+    } else {
+      break;
+    }
+  }
+  return list;
+}
+
+function applySubs(starters, subs){
+  const outSet = new Set(subs.map(s => s.out));
+  const inArr = subs.map(s => s.in);
+  const kept = starters.filter(p => p && !outSet.has(p));
+  return kept.concat(inArr);
+}
+
+function recomputeQuarters(){
+  players.forEach(p => { p.quarters = 0; });
+  const layout = FORMATIONS[formationSel.value];
+  const gkIndex = gkIndexFor(layout);
+
+  addQuarter(firstHalf.starters);
+  firstHalf.subs = computeSubsList(firstHalf, gkIndex);
+  const q2 = applySubs(firstHalf.starters, firstHalf.subs);
+  addQuarter(q2);
+
+  addQuarter(secondHalf.starters);
+  secondHalf.subs = computeSubsList(secondHalf, gkIndex);
+  const q4 = applySubs(secondHalf.starters, secondHalf.subs);
+  addQuarter(q4);
+}
+
+function fullRegenerate(){
+  generateFirstHalfLineup();
+  generateSecondHalfLineup();
+  recomputeQuarters();
+}
+
+function currentState(){
+  return currentTab === 'first' ? firstHalf : secondHalf;
+}
+
+function removePlayer(player){
+  players = players.filter(p => p !== player);
+  [firstHalf, secondHalf].forEach(h => {
+    const si = h.starters.indexOf(player);
+    if (si !== -1) h.starters[si] = null;
+    const bi = h.bench.indexOf(player);
+    if (bi !== -1) h.bench.splice(bi, 1);
+  });
+  selectedBench = null;
+  recomputeQuarters();
+  render();
+}
+
+function nameWithCount(player){
+  return player.name + ' (' + player.quarters + '/4)';
+}
+
+function render(){
+  const layout = FORMATIONS[formationSel.value];
+  const state = currentState();
+  tabFirstBtn.classList.toggle('active-tab', currentTab === 'first');
+  tabSecondBtn.classList.toggle('active-tab', currentTab === 'second');
+  tabFirstBtn.style.borderColor = currentTab === 'first' ? 'var(--border-accent)' : '';
+  tabFirstBtn.style.background = currentTab === 'first' ? 'var(--bg-accent)' : '';
+  tabFirstBtn.style.color = currentTab === 'first' ? 'var(--text-accent)' : '';
+  tabSecondBtn.style.borderColor = currentTab === 'second' ? 'var(--border-accent)' : '';
+  tabSecondBtn.style.background = currentTab === 'second' ? 'var(--bg-accent)' : '';
+  tabSecondBtn.style.color = currentTab === 'second' ? 'var(--text-accent)' : '';
+
+  fieldEl.querySelectorAll('.slot').forEach(n => n.remove());
+  layout.forEach((pos, i) => {
+    const player = state.starters[i];
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.style.left = pos.x + '%';
+    slot.style.top = pos.y + '%';
+    slot.style.transform = 'translate(-50%,-50%)';
+
+    const circle = document.createElement('div');
+    circle.className = 'circle';
+    circle.textContent = pos.label;
+    circle.addEventListener('click', () => {
+      if (selectedBench !== null) {
+        const incoming = state.bench[selectedBench];
+        const outgoing = state.starters[i];
+        state.bench.splice(selectedBench, 1);
+        if (outgoing) state.bench.push(outgoing);
+        state.starters[i] = incoming;
+        selectedBench = null;
+      } else if (state.starters[i]) {
+        state.bench.push(state.starters[i]);
+        state.starters[i] = null;
+      }
+      recomputeQuarters();
+      render();
+    });
+
+    const tagWrap = document.createElement('div');
+    tagWrap.className = 'tag';
+    const nameLabel = document.createElement('span');
+    nameLabel.textContent = player ? nameWithCount(player) : '\u2014';
+    tagWrap.appendChild(nameLabel);
+    if (player) {
+      const rm = document.createElement('span');
+      rm.className = 'rm';
+      rm.textContent = '\u00d7';
+      rm.title = 'Remove player';
+      rm.addEventListener('click', (e) => { e.stopPropagation(); removePlayer(player); });
+      tagWrap.appendChild(rm);
+    }
+    slot.appendChild(circle);
+    slot.appendChild(tagWrap);
+    fieldEl.appendChild(slot);
+  });
+
+  benchEl.innerHTML = '';
+  if (state.bench.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted-note';
+    empty.textContent = 'No players on the bench.';
+    benchEl.appendChild(empty);
+  }
+  state.bench.forEach((player, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (selectedBench === i ? ' selected' : '');
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = nameWithCount(player);
+    nameSpan.addEventListener('click', () => {
+      selectedBench = (selectedBench === i) ? null : i;
+      render();
+    });
+    const gkBadge = document.createElement('span');
+    gkBadge.className = 'gk-badge' + (player.gkOk ? ' active' : '');
+    gkBadge.textContent = 'GK';
+    gkBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      player.gkOk = !player.gkOk;
+      fullRegenerate();
+      render();
+    });
+    const rm = document.createElement('span');
+    rm.className = 'rm';
+    rm.textContent = '\u00d7';
+    rm.title = 'Remove player';
+    rm.addEventListener('click', (e) => { e.stopPropagation(); removePlayer(player); });
+    chip.appendChild(nameSpan);
+    chip.appendChild(gkBadge);
+    chip.appendChild(rm);
+    benchEl.appendChild(chip);
+  });
+
+  subsListEl.innerHTML = '';
+  if (state.subs.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'muted-note';
+    p.textContent = state.bench.length === 0 ? 'No bench players available for a swap.' : 'No swap needed \u2014 playing time is already balanced.';
+    subsListEl.appendChild(p);
+  }
+  state.subs.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'sub-row';
+    row.innerHTML = '<span>' + s.out.name + '</span><span>\u2194</span><span>' + s.in.name + '</span>';
+    subsListEl.appendChild(row);
+  });
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  selectedBench = null;
+  render();
+}
+
+tabFirstBtn.addEventListener('click', () => switchTab('first'));
+tabSecondBtn.addEventListener('click', () => switchTab('second'));
+
+formationSel.addEventListener('change', () => {
+  fullRegenerate();
+  switchTab('first');
+});
+
+document.getElementById('reroll-btn').addEventListener('click', () => {
+  if (currentTab === 'first') {
+    generateFirstHalfLineup();
+    generateSecondHalfLineup();
+  } else {
+    generateSecondHalfLineup();
+  }
+  recomputeQuarters();
+  selectedBench = null;
+  render();
+});
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  players = defaultRoster();
+  formationSel.value = "1-3-3";
+  fullRegenerate();
+  switchTab('first');
+});
+
+hintEl.textContent = "(q/4) shows quarters played out of 4. Keepers play the full half, so they never appear in the sub list.";
+fullRegenerate();
+switchTab('first');
+</script>
+</body>
+</html>
